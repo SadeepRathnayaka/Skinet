@@ -1,3 +1,4 @@
+using Core.Interfaces;
 using Infastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,17 +8,36 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
-// Register StoreContext as a service
-// Server=SADEEPMADHUSHAN\SQLEXPRESS;Database=skinet;Trusted_Connection=True;TrustCertificate=True
+// Register StoreContext as a service (For DI)
 builder.Services.AddDbContext<StoreContext>(opt =>
 {
     opt.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")
     );
 });
 
+// Register ProductRepository as a Service (For DI)
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 
 app.MapControllers();
+
+
+try
+{
+    using var scope = app.Services.CreateScope();
+    var services = scope.ServiceProvider;
+    var context = services.GetRequiredService<StoreContext>();
+    await context.Database.MigrateAsync();
+    await StoreContextSeed.SeedAsync(context);
+}
+catch (Exception ex)
+{
+    System.Console.WriteLine(ex);
+    throw;
+}
+
+
 app.Run();
