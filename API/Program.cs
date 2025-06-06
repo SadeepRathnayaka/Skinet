@@ -1,3 +1,4 @@
+using API.Middleware;
 using Core.Interfaces;
 using Infastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -20,13 +21,15 @@ builder.Services.AddScoped<IProductRepository, ProductRepository>();
 
 // Register IGenericRepository as a Service (For DI)
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+builder.Services.AddCors();
 
 var app = builder.Build();
 
 // Middleware (Order does matter)
 
 // Configure the HTTP request pipeline.
-
+app.UseMiddleware<ExceptionMiddleware>();
+app.UseCors(x => x.AllowAnyHeader().AllowAnyMethod().WithOrigins("http://localhost:4200", "https://localhost:4200"));
 app.MapControllers();
 
 
