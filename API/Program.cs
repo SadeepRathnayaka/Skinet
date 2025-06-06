@@ -18,7 +18,12 @@ builder.Services.AddDbContext<StoreContext>(opt =>
 // Register ProductRepository as a Service (For DI)
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 
+// Register IGenericRepository as a Service (For DI)
+builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+
 var app = builder.Build();
+
+// Middleware (Order does matter)
 
 // Configure the HTTP request pipeline.
 
