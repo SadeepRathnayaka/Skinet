@@ -1,4 +1,5 @@
 using API.Middleware;
+using Core.Entities;
 using Core.Interfaces;
 using Infastructure.Data;
 using Infastructure.Services;
@@ -33,14 +34,29 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(config =>
 
 builder.Services.AddSingleton<ICartService, CartService>();
 
+// Configure Identity with AppUser and StoreContext
+builder.Services.AddAuthorization();                  // adds authorization services to the service
+builder.Services.AddIdentityApiEndpoints<AppUser>().AddEntityFrameworkStores<StoreContext>();   // AddIdentityApiEndpoints<AppUser>() implicitly call AddAuthentication()
+
 var app = builder.Build();
 
 // Middleware (Order does matter)
 
 // Configure the HTTP request pipeline.
-app.UseMiddleware<ExceptionMiddleware>();
-app.UseCors(x => x.AllowAnyHeader().AllowAnyMethod().WithOrigins("http://localhost:4200", "https://localhost:4200"));
-app.MapControllers();
+app.UseMiddleware<ExceptionMiddleware>();           // Handling exceptions in the middleware
+
+// Allow headers, methods, credentials(cookies) from the following domains
+app.UseCors(x => x.AllowAnyHeader().AllowAnyMethod().AllowCredentials().WithOrigins("http://localhost:4200", "https://localhost:4200"));
+
+// Enforce authentication and authorization for requests which needs authentication
+app.UseAuthentication();
+app.UseAuthorization();
+
+// End of Middleware 
+
+app.MapControllers();                               // Make available the Endpoints in the controllers for the HTTP requests
+
+app.MapGroup("api").MapIdentityApi<AppUser>();      // register the Endpoints "STARTING with API" given from the Identity model for the AppUser : /api/login
 
 
 try
@@ -48,8 +64,10 @@ try
     using var scope = app.Services.CreateScope();
     var services = scope.ServiceProvider;
     var context = services.GetRequiredService<StoreContext>();
-    await context.Database.MigrateAsync();
-    await StoreContextSeed.SeedAsync(context);
+    await context.Database.MigrateAsync();      // checks the latest migration and the migration addedd to the DB,
+                                                // compares them and if the latest migration didnt applied to the current DB,
+                                                // then automatically add the latest migration to the DB
+    await StoreContextSeed.SeedAsync(context);     // seed data if the tables are empty
 }
 catch (Exception ex)
 {
